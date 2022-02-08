@@ -1,0 +1,16 @@
+evalutils==0.2.4
+scikit-learn==0.20.2
+scipy==1.2.1
+tqdm==4.62.2
+tifffile==2021.8.8
+imagecodecs==2021.11.20
+h5py==3.1.0
+tensorflow-datasets==4.0.1
+tensorflow-estimator==2.7.0
+tensorboard==2.7.0
+Markdown==3.3.6
+keras==2.7.0
+Keras-Preprocessing==1.1.2
+opencv-contrib-python==4.1.2.30
+opencv-python==4.1.2.30
+pandas==1.3.5
