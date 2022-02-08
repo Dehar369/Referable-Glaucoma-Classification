@@ -100,11 +100,16 @@ class airogs_algorithm(ClassificationAlgorithm):
         image = np.expand_dims(input_image_arrayy,axis=0)
         image = image/255.
 
-        model = tf.keras.models.load_model('./resnet101.h5')
+        IMG_SHAPE=(512,512,3)
+        base_model = tf.keras.applications.ResNet152(input_shape=IMG_SHAPE,include_top=False,weights="imagenet")
+        fla  = Flatten()(base_model.output)
+        den = Dense(1, activation='sigmoid')(fla)
+        model =  Model(inputs=base_model.input,outputs=den)
+                                                     
 
         rg_likelihood = model.predict(image)
-        rg_binary = bool(rg_likelihood > .60)
-        if rg_likelihood >=0.4 and rg_likelihood<=0.6:
+        rg_binary = bool(rg_likelihood > .75)
+        if rg_likelihood >=0.45 and rg_likelihood<=0.55:
             ungradability_binary = True
             ungradability_score = 1.0
         else:
