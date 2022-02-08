@@ -8,7 +8,7 @@ import tifffile
 import numpy as np
 from keras.layers import Flatten,Dense
 from keras.models import Model
-import cv2
+from skimage.transform import resize
 import tensorflow as tf
 
 
@@ -96,7 +96,7 @@ class airogs_algorithm(ClassificationAlgorithm):
     def predict(self, *,input_image_array : np.ndarray) -> Dict:
 
 
-        input_image_arrayy = cv2.resize(input_image_array,(512,512))
+        input_image_arrayy = resize(input_image_array, (512, 512), anti_aliasing=True)
         image = np.expand_dims(input_image_arrayy,axis=0)
         image = image/255.
 
