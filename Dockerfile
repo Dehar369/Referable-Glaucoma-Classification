@@ -26,7 +26,6 @@ RUN python -m pip install --user -r requirements.txt
 RUN python -m pip show imagecodecs
 
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
-COPY --chown=algorithm:algorithm resnet101.h5 /opt/algorithm/resnet101.h5
 
 # Copy additional files, such as model weights
 # e.g. `COPY --chown=algorithm:algorithm weights.pth /opt/algorithm/weights.pth`
