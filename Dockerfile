@@ -22,11 +22,11 @@ RUN python -m pip install --user -U pip
 
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
 RUN python -m pip install --user --upgrade pip
-RUN python -m pip install --user -rrequirements.txt
+RUN python -m pip install --user -r requirements.txt
 RUN python -m pip show imagecodecs
 
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
-COPY --chown=algorithm:algorithm resnet101.h5/opt/algorithm/resnet101.h5
+COPY --chown=algorithm:algorithm resnet101.h5 /opt/algorithm/resnet101.h5
 
 # Copy additional files, such as model weights
 # e.g. `COPY --chown=algorithm:algorithm weights.pth /opt/algorithm/weights.pth`
@@ -45,5 +45,3 @@ LABEL nl.diagnijmegen.rse.algorithm.hardware.memory=4G
 LABEL nl.diagnijmegen.rse.algorithm.hardware.gpu.count=0
 LABEL nl.diagnijmegen.rse.algorithm.hardware.gpu.cuda_compute_capability=
 LABEL nl.diagnijmegen.rse.algorithm.hardware.gpu.memory=
-
-
