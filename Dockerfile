@@ -2,7 +2,12 @@
 # TENSORFLOW (https://hub.docker.com/r/tensorflow/tensorflow/) 
 # or a PYTORCH (https://hub.docker.com/r/pytorch/pytorch/) base image
 
+
 FROM python:3.7-slim
+
+RUN apt-get update
+RUN apt-get install ffmpeg libsm6 libxext6  -y
+RUN apt-get install wget -y
 
 RUN groupadd -r algorithm && useradd -m --no-log-init -r -g algorithm algorithm
 
@@ -19,14 +24,17 @@ RUN python -m pip install --user -U pip
 
 # Install required packages
 # e.g. `python -m pip install sklearn==...`
-
+RUN wget https://ultralytics.com/assets/Arial.ttf
+#RUN mv Arial.ttf /opt/algorithm/.config/Ultralytics/
 COPY --chown=algorithm:algorithm requirements.txt /opt/algorithm/
 RUN python -m pip install --user --upgrade pip
-RUN python -m pip install --user -r requirements.txt
+RUN python -m pip install --user -rrequirements.txt
 RUN python -m pip show imagecodecs
 
 COPY --chown=algorithm:algorithm process.py /opt/algorithm/
-
+COPY --chown=algorithm:algorithm weights.h5 /opt/algorithm/
+COPY --chown=algorithm:algorithm model /opt/algorithm/
+COPY --chown=algorithm:algorithm yolov5/ /opt/algorithm/
 # Copy additional files, such as model weights
 # e.g. `COPY --chown=algorithm:algorithm weights.pth /opt/algorithm/weights.pth`
 
@@ -40,7 +48,7 @@ LABEL nl.diagnijmegen.rse.algorithm.name=airogs_algorithm
 # These labels are required and describe what kind of hardware your algorithm requires to run.
 LABEL nl.diagnijmegen.rse.algorithm.hardware.cpu.count=1
 LABEL nl.diagnijmegen.rse.algorithm.hardware.cpu.capabilities=()
-LABEL nl.diagnijmegen.rse.algorithm.hardware.memory=4G
+LABEL nl.diagnijmegen.rse.algorithm.hardware.memory=1G
 LABEL nl.diagnijmegen.rse.algorithm.hardware.gpu.count=0
 LABEL nl.diagnijmegen.rse.algorithm.hardware.gpu.cuda_compute_capability=
 LABEL nl.diagnijmegen.rse.algorithm.hardware.gpu.memory=
