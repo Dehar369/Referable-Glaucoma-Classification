@@ -155,10 +155,10 @@ class airogs_algorithm(ClassificationAlgorithm):
         rg_likelihood = np.mean(preds, axis=0)
         aleatoric = np.mean(preds*(1-preds), axis=0)
     
-        rg_binary = bool(rg_likelihood > .2)
+        rg_binary = bool(rg_likelihood > .5)
         ungradability_score = max(rg_likelihood, 1-rg_likelihood)
         ungradability_binary = bool(aleatoric > .2)
-        # to here with your inference algorithm
+       
 
         out = {
             "multiple-referable-glaucoma-likelihoods": float(rg_likelihood),
