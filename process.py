@@ -1,3 +1,4 @@
+import imp
 from typing import Dict
 
 import SimpleITK
@@ -6,12 +7,14 @@ import json
 from pathlib import Path
 import tifffile
 import numpy as np
-from keras.layers import Flatten,Dense
-from keras.models import Model
-from skimage.transform import resize
+import imgaug.augmenters as iaa
+import torch
+import cv2
+
 import tensorflow as tf
-
-
+from tensorflow import keras
+from tensorflow.keras.layers import Flatten,Dense,Dropout
+from tensorflow.keras.models import Model
 
 from evalutils import ClassificationAlgorithm
 from evalutils.validators import (
@@ -49,6 +52,26 @@ class airogs_algorithm(ClassificationAlgorithm):
                             "multiple-referable-glaucoma-binary",
                             "multiple-ungradability-scores",
                             "multiple-ungradability-binary"]
+        
+        self.aug = iaa.GammaContrast(2)
+        self.INPUT_SHAPE = (224,224,3)
+        base_model = keras.applications.ResNet50(input_shape=self.INPUT_SHAPE,
+                                         include_top=False,
+                                         weights=None)
+        x = Flatten()(base_model.layers[-1].output)
+        x = Dense(1024, activation='relu', name='fc1024')(x)
+        x = Dropout(rate=0.2, name='dropout1')(x, training=True)
+        x = Dense(256, activation='relu', name='fc256')(x)
+        x = Dropout(rate=0.2, name='dropout2')(x, training=True)
+        x = Dense(64, activation='relu', name='fc64')(x)
+        x = Dropout(rate=0.2, name='dropout3')(x, training=True)
+        x = Dense(1, activation='sigmoid', name='fc1')(x)
+        self.model = Model(inputs=base_model.input,outputs=x)
+
+        self.model.load_weights('weights.h5')
+        self.yolo_model = torch.load('model')
+        #self.yolo_model = torch.hub.load('ultralytics/yolov5', 'custom', 'best.pt')
+
     
     def load(self):
         for key, file_loader in self._file_loaders.items():
@@ -93,33 +116,54 @@ class airogs_algorithm(ClassificationAlgorithm):
 
         return results
 
-    def predict(self, *,input_image_array : np.ndarray) -> Dict:
+    def predict(self, *, input_image_array: np.ndarray) -> Dict:
+        # From here, use the input_image to predict the output
+        # We are using a not-so-smart algorithm to predict the output, you'll want to do your model inference here
 
-
-        input_image_arrayy = resize(input_image_array, (512, 512), anti_aliasing=True)
-        image = np.expand_dims(input_image_arrayy,axis=0)
-        image = image/255.
-
-        IMG_SHAPE=(512,512,3)
-        base_model = tf.keras.applications.ResNet152(input_shape=IMG_SHAPE,include_top=False,weights="imagenet")
-        fla  = Flatten()(base_model.output)
-        den = Dense(1, activation='sigmoid')(fla)
-        model =  Model(inputs=base_model.input,outputs=den)
-                                                     
-
-        rg_likelihood = model.predict(image)
-        rg_binary = bool(rg_likelihood > .75)
-        if rg_likelihood >=0.45 and rg_likelihood<=0.55:
-            ungradability_binary = True
-            ungradability_score = 1.0
+        # Replace starting here
+        
+        roi_cropped = cv2.resize(input_image_array,(1200,1200))
+        roi_cropped = self.yolo_model(roi_cropped)
+        roi_cropped = roi_cropped.crop()
+        confidence = 0.0001
+        if roi_cropped is not None and len(roi_cropped)>0:
+            roi_cropped = roi_cropped[0]
+            if roi_cropped is not None and 'im' in roi_cropped:
+                confidence = roi_cropped['conf']
+                roi_cropped = roi_cropped['im']
+                roi_cropped = cv2.resize(roi_cropped, (self.INPUT_SHAPE[0], self.INPUT_SHAPE[1]))
+            else:
+                roi_cropped = cv2.resize(input_image_array, (self.INPUT_SHAPE[0], self.INPUT_SHAPE[1]))
         else:
-            ungradability_binary = False
-            ungradability_score = 0.0
+            roi_cropped = cv2.resize(input_image_array, (self.INPUT_SHAPE[0], self.INPUT_SHAPE[1]))
+
+
+        image_arr = self.aug.augment_image(roi_cropped)
+        image_arr[:,:,0] = image_arr[:,:,1]
+        image_arr[:,:,2] = image_arr[:,:,1]
+        if np.max(image_arr)>0:
+            image_arr=image_arr/(np.max(image_arr))
+        else:
+            image_arr = image_arr
+        
+        preds = []
+        for i in range(5):
+            preds.append(self.model.predict(np.expand_dims(image_arr, axis=0))[0][0])
+            
+            
+        preds = np.array(preds)
+        rg_likelihood = np.mean(preds, axis=0)
+        aleatoric = np.mean(preds*(1-preds), axis=0)
+    
+        rg_binary = bool(rg_likelihood > .2)
+        ungradability_score = max(rg_likelihood, 1-rg_likelihood)
+        ungradability_binary = bool(aleatoric > .2)
+        # to here with your inference algorithm
 
         out = {
-            "multiple-referable-glaucoma-likelihoods": rg_likelihood,
+            "multiple-referable-glaucoma-likelihoods": float(rg_likelihood),
             "multiple-referable-glaucoma-binary": rg_binary,
-            "multiple-ungradability-scores": ungradability_score,
+            "multiple-ungradability-scores": 10*float(confidence),
             "multiple-ungradability-binary": ungradability_binary
         }
 
